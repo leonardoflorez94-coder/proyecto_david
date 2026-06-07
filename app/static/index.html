@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MeLi IAM Bot</title>
+    <style>
+      :root { color-scheme: light dark; font-family: Inter, system-ui, sans-serif; }
+      body { margin: 0; background: #fff159; color: #242424; }
+      main { min-height: 100vh; display: grid; grid-template-rows: auto 1fr auto; max-width: 900px; margin: 0 auto; background: #fff; box-shadow: 0 0 50px rgba(0,0,0,.12); }
+      header { padding: 24px; border-bottom: 1px solid #eee; }
+      h1 { margin: 0; font-size: clamp(24px, 5vw, 42px); }
+      p { margin: 8px 0 0; color: #5f6368; }
+      #messages { padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+      .message { max-width: 78%; padding: 14px 16px; border-radius: 18px; line-height: 1.45; white-space: pre-wrap; }
+      .user { align-self: flex-end; background: #3483fa; color: white; border-bottom-right-radius: 4px; }
+      .assistant { align-self: flex-start; background: #f3f4f6; color: #242424; border-bottom-left-radius: 4px; }
+      form { display: flex; gap: 10px; padding: 18px; border-top: 1px solid #eee; background: #fafafa; }
+      input { flex: 1; border: 1px solid #ddd; border-radius: 999px; padding: 14px 16px; font-size: 16px; }
+      button { border: 0; border-radius: 999px; background: #3483fa; color: #fff; padding: 0 22px; font-weight: 700; cursor: pointer; }
+      @media (max-width: 600px) { main { min-height: 100dvh; } .message { max-width: 92%; } header, #messages { padding: 16px; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>MeLi IAM Bot</h1>
+        <p>Asistente conversacional con RAG y memoria propia de la API.</p>
+      </header>
+      <section id="messages">
+        <div class="message assistant">Subí documentos a data/documents, ejecutá la ingesta y preguntame sobre IAM.</div>
+      </section>
+      <form id="chat-form">
+        <input id="message" autocomplete="off" placeholder="Ej: ¿Qué significa AAA?" />
+        <button>Enviar</button>
+      </form>
+    </main>
+    <script>
+      const form = document.querySelector('#chat-form');
+      const input = document.querySelector('#message');
+      const messages = document.querySelector('#messages');
+      let conversationId = localStorage.getItem('conversationId');
+
+      function addMessage(role, text) {
+        const element = document.createElement('div');
+        element.className = `message ${role}`;
+        element.textContent = text;
+        messages.appendChild(element);
+        messages.scrollTop = messages.scrollHeight;
+      }
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const text = input.value.trim();
+        if (!text) return;
+        input.value = '';
+        addMessage('user', text);
+        addMessage('assistant', 'Pensando...');
+        const pending = messages.lastElementChild;
+        try {
+          const response = await fetch('/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: text, conversation_id: conversationId }),
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.detail || 'Error inesperado');
+          conversationId = data.conversation_id;
+          localStorage.setItem('conversationId', conversationId);
+          pending.textContent = data.answer;
+        } catch (error) {
+          pending.textContent = `Error: ${error.message}`;
+        }
+      });
+    </script>
+  </body>
+</html>
