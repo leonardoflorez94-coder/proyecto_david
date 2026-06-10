@@ -1,0 +1,16 @@
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.env
+storage/
+data/
+app/
+tests/
+training/
+requirements.txt
+requirements-dev.txt
+Dockerfile
+docker-compose.yml

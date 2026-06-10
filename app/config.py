@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     app_port: int = 8000
     docs_dir: Path = Path("data/documents")
     storage_dir: Path = Path("storage")
-    ollama_base_url: str = "http://localhost:11434"
+    ollama_base_url: str = "http://127.0.0.1:11434"
     ollama_model: str = "llama3.2:3b"
     embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     memory_max_messages: int = 8

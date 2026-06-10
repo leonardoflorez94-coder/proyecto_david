@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MeLi IAM Bot</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #fff159;
+        color: #1f2937;
+      }
+
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100dvh; background: radial-gradient(circle at top left, #fff8a8, #fff159 34%, #f5d400); }
+      main { width: min(980px, calc(100% - 24px)); min-height: calc(100dvh - 24px); margin: 12px auto; display: grid; grid-template-rows: auto auto 1fr auto; overflow: hidden; border-radius: 28px; background: rgba(255, 255, 255, .92); box-shadow: 0 24px 70px rgba(38, 38, 38, .2); }
+      header { padding: 28px 30px 22px; border-bottom: 1px solid #ececec; }
+      h1 { margin: 0; font-size: clamp(28px, 5vw, 50px); letter-spacing: -0.05em; }
+      header p { margin: 8px 0 0; max-width: 680px; color: #5f6368; line-height: 1.5; }
+      .settings { display: grid; gap: 10px; padding: 16px 30px; border-bottom: 1px solid #ececec; background: #fafafa; }
+      label { font-size: 13px; font-weight: 800; color: #4b5563; text-transform: uppercase; letter-spacing: .04em; }
+      .settings-row { display: flex; gap: 10px; }
+      input { width: 100%; border: 1px solid #d7d7d7; border-radius: 999px; padding: 13px 16px; font-size: 15px; background: #fff; color: #111827; }
+      button { border: 0; border-radius: 999px; background: #3483fa; color: #fff; padding: 0 20px; font-weight: 800; cursor: pointer; transition: transform .15s ease, background .15s ease; }
+      button:hover { background: #2968c8; transform: translateY(-1px); }
+      #messages { padding: 26px 30px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+      .message { max-width: 78%; padding: 14px 16px; border-radius: 19px; line-height: 1.45; white-space: pre-wrap; }
+      .user { align-self: flex-end; background: #3483fa; color: #fff; border-bottom-right-radius: 5px; }
+      .assistant { align-self: flex-start; background: #f3f4f6; color: #242424; border-bottom-left-radius: 5px; }
+      .meta { margin-top: 8px; font-size: 12px; color: #6b7280; }
+      form { display: flex; gap: 10px; padding: 18px 30px 24px; border-top: 1px solid #ececec; background: #fafafa; }
+      form button { min-width: 110px; }
+      @media (max-width: 640px) {
+        main { width: 100%; min-height: 100dvh; margin: 0; border-radius: 0; }
+        header, .settings, #messages, form { padding-left: 16px; padding-right: 16px; }
+        .settings-row, form { flex-direction: column; }
+        form button { min-height: 46px; }
+        .message { max-width: 94%; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>MeLi IAM Bot</h1>
+        <p>Frontend estático para Vercel. Conectalo con la API FastAPI desplegada aparte o con tu backend local.</p>
+      </header>
+
+      <section class="settings">
+        <label for="api-base">URL del backend</label>
+        <div class="settings-row">
+          <input id="api-base" placeholder="http://127.0.0.1:8000" />
+          <button id="save-api" type="button">Guardar</button>
+        </div>
+      </section>
+
+      <section id="messages">
+        <div class="message assistant">Configurá la URL del backend y preguntame sobre los documentos indexados.</div>
+      </section>
+
+      <form id="chat-form">
+        <input id="message" autocomplete="off" placeholder="Ej: ¿Qué significa AAA?" />
+        <button>Enviar</button>
+      </form>
+    </main>
+
+    <script>
+      const apiInput = document.querySelector('#api-base');
+      const saveApi = document.querySelector('#save-api');
+      const form = document.querySelector('#chat-form');
+      const input = document.querySelector('#message');
+      const messages = document.querySelector('#messages');
+
+      let conversationId = localStorage.getItem('conversationId');
+      apiInput.value = localStorage.getItem('apiBaseUrl') || 'http://127.0.0.1:8000';
+
+      function apiBaseUrl() {
+        return apiInput.value.replace(/\/$/, '');
+      }
+
+      function addMessage(role, text, meta) {
+        const element = document.createElement('div');
+        element.className = `message ${role}`;
+        element.textContent = text;
+        if (meta) {
+          const source = document.createElement('div');
+          source.className = 'meta';
+          source.textContent = meta;
+          element.appendChild(source);
+        }
+        messages.appendChild(element);
+        messages.scrollTop = messages.scrollHeight;
+        return element;
+      }
+
+      saveApi.addEventListener('click', () => {
+        localStorage.setItem('apiBaseUrl', apiBaseUrl());
+        addMessage('assistant', `Backend configurado: ${apiBaseUrl()}`);
+      });
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const text = input.value.trim();
+        if (!text) return;
+
+        input.value = '';
+        addMessage('user', text);
+        const pending = addMessage('assistant', 'Pensando...');
+
+        try {
+          const response = await fetch(`${apiBaseUrl()}/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: text, conversation_id: conversationId }),
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.detail || 'Error inesperado');
+
+          conversationId = data.conversation_id;
+          localStorage.setItem('conversationId', conversationId);
+          pending.textContent = data.answer;
+
+          if (data.sources?.length) {
+            const sourceList = data.sources.map((item) => item.page ? `${item.source} p.${item.page}` : item.source);
+            const meta = document.createElement('div');
+            meta.className = 'meta';
+            meta.textContent = `Fuentes: ${[...new Set(sourceList)].join(', ')}`;
+            pending.appendChild(meta);
+          }
+        } catch (error) {
+          pending.textContent = `Error: ${error.message}`;
+        }
+      });
+    </script>
+  </body>
+</html>
