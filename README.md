@@ -137,6 +137,78 @@ http://127.0.0.1:8000
 
 Para produccion, desplegar el backend en Render, Fly.io, Railway, AWS o GCP y usar esa URL en el frontend de Vercel.
 
+## Backend En Fly.io
+
+Fly.io es una opcion practica para este proyecto porque permite correr un contenedor persistente con FastAPI, ChromaDB y Ollama. Vercel no es adecuado para este backend porque el bundle con Torch, embeddings y modelo excede el limite de Lambda.
+
+Archivos incluidos:
+
+- `Dockerfile.fly`: imagen productiva con Python, dependencias y Ollama.
+- `scripts/start_fly.sh`: levanta Ollama, descarga el modelo, indexa documentos y arranca FastAPI.
+- `fly.toml.example`: configuracion base para Fly.io.
+
+Pasos:
+
+1. Instalar Fly CLI.
+
+```bash
+winget install Fly.Flyctl
+```
+
+2. Autenticarse.
+
+```bash
+fly auth login
+```
+
+3. Copiar el ejemplo de configuracion.
+
+```bash
+copy fly.toml.example fly.toml
+```
+
+4. Editar `fly.toml` y cambiar `app = "proyecto-david-iam-bot"` por un nombre unico.
+
+5. Crear la app.
+
+```bash
+fly apps create nombre-unico-de-tu-app
+```
+
+6. Crear un volumen para persistir el modelo de Ollama y el indice vectorial.
+
+```bash
+fly volumes create data --size 10 --region mia --app nombre-unico-de-tu-app
+```
+
+7. Verificar que los documentos estén en `data/documents/` antes de desplegar. Esa carpeta no se sube a GitHub, pero si se incluye en el build local de Fly.
+
+8. Desplegar.
+
+```bash
+fly deploy --app nombre-unico-de-tu-app
+```
+
+9. Ver logs.
+
+```bash
+fly logs --app nombre-unico-de-tu-app
+```
+
+10. Probar health.
+
+```text
+https://nombre-unico-de-tu-app.fly.dev/health
+```
+
+11. Usar esa URL en el frontend de Vercel como `URL del backend`.
+
+Notas:
+
+- El primer arranque puede tardar varios minutos porque descarga `llama3.2:3b` y genera embeddings.
+- Se recomienda al menos `memory = "4096mb"` en `fly.toml`.
+- Si cambias documentos, ejecuta `/ingest` desde la API o vuelve a desplegar con los documentos actualizados.
+
 ## Memoria
 
 La memoria está implementada en `app/memory.py` con SQLite.

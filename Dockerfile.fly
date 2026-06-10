@@ -1,0 +1,31 @@
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    APP_HOST=0.0.0.0 \
+    APP_PORT=8000 \
+    DOCS_DIR=data/documents \
+    STORAGE_DIR=/data/storage \
+    OLLAMA_MODELS=/data/ollama \
+    OLLAMA_BASE_URL=http://127.0.0.1:11434 \
+    OLLAMA_MODEL=llama3.2:3b \
+    AUTO_INGEST=true
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    procps \
+    && curl -fsSL https://ollama.com/install.sh | sh \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+RUN chmod +x scripts/start_fly.sh
+
+EXPOSE 8000
+
+CMD ["./scripts/start_fly.sh"]

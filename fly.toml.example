@@ -1,0 +1,33 @@
+app = "proyecto-david-iam-bot"
+primary_region = "mia"
+
+[build]
+  dockerfile = "Dockerfile.fly"
+
+[env]
+  APP_HOST = "0.0.0.0"
+  APP_PORT = "8000"
+  DOCS_DIR = "data/documents"
+  STORAGE_DIR = "/data/storage"
+  OLLAMA_MODELS = "/data/ollama"
+  OLLAMA_BASE_URL = "http://127.0.0.1:11434"
+  OLLAMA_MODEL = "llama3.2:3b"
+  AUTO_INGEST = "true"
+  MEMORY_MAX_MESSAGES = "8"
+  RETRIEVAL_K = "5"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  memory = "4096mb"
+  cpu_kind = "shared"
+  cpus = 2
+
+[[mounts]]
+  source = "data"
+  destination = "/data"
